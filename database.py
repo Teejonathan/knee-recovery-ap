@@ -3,11 +3,10 @@ from sqlalchemy.ext.declarative import declarative_base
 from sqlalchemy.orm import sessionmaker, relationship
 from datetime import datetime
 
-SQLALCHEMY_DATABASE_URL = "sqlite:///./knee_recovery.db"
+SQLALCHEMY_DATABASE_URL = "postgresql://neondb_owner:npg_sIeH1vC9xglf@ep-cold-bar-atemwir9.c-9.us-east-1.aws.neon.tech/neondb?sslmode=require"
 
-engine = create_engine(
-    SQLALCHEMY_DATABASE_URL, connect_args={"check_same_thread": False}
-)
+engine = create_engine(SQLALCHEMY_DATABASE_URL)
+
 SessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)
 Base = declarative_base()
 

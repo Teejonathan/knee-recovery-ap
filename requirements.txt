@@ -6,3 +6,4 @@ python-jose[cryptography]
 joblib 
 scikit-learn==1.6.1 
 pandas
+psycopg2-binary

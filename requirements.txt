@@ -1,8 +1,0 @@
-fastapi 
-uvicorn 
-sqlalchemy 
-passlib[bcrypt] 
-python-jose[cryptography] 
-joblib 
-scikit-learn==1.6.1 
-pandas

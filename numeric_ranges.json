@@ -1,0 +1,14 @@
+{
+  "Age": {"min": 16, "max": 45},
+  "Height_cm": {"min": 158, "max": 201},
+  "Weight_kg": {"min": 50, "max": 101},
+  "Fatigue_Score": {"min": 1, "max": 9},
+  "ACL_Risk_Score": {"min": 5, "max": 50},
+  "Training_Hours_Per_Week": {"min": 3, "max": 19},
+  "Recovery_Days_Per_Week": {"min": 1, "max": 4},
+  "Heart_Rate": {"min": 50, "max": 90},
+  "Sleep_Hours": {"min": 4, "max": 9},
+  "Dietary_Intake": {"min": 1600, "max": 3343},
+  "Prehab_Weeks": {"min": 0, "max": 5},
+  "Psychological_Readiness_Score": {"min": 13, "max": 100}
+}

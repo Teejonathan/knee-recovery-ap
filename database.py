@@ -25,6 +25,8 @@ class User(Base):
     gender = Column(String, nullable=True)
     phone = Column(String, nullable=True)
     athlete_type = Column(String, nullable=True)
+    height_cm = Column(Integer, nullable=True)
+    weight_kg = Column(Integer, nullable=True)
     created_at = Column(DateTime, default=datetime.utcnow)
     predictions = relationship("Prediction", back_populates="user")
 

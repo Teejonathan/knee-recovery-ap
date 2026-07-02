@@ -44,6 +44,8 @@ class RegisterSchema(BaseModel):
     gender: Optional[str] = None
     phone: Optional[str] = None
     athlete_type: Optional[str] = None
+    height_cm: Optional[int] = None
+    weight_kg: Optional[int] = None
 
 class LoginSchema(BaseModel):
     email: str
@@ -53,13 +55,17 @@ class PredictSchema(BaseModel):
     injury_type: str
     injury_severity: str
     surgery_type: str
+    recovery_therapy_type: str
+    training_intensity: str
     fatigue_score: int
     acl_risk_score: int
     psychological_readiness: int
     dietary_intake: int
     training_hours: int
-    recovery_success: int
-    return_to_sport_status: str
+    recovery_days_per_week: int
+    heart_rate: int
+    sleep_hours: float
+    prehab_weeks: int
 
 # Routes
 @app.get("/")
@@ -80,6 +86,8 @@ def register(data: RegisterSchema, db: Session = Depends(get_db)):
         gender=data.gender,
         phone=data.phone,
         athlete_type=data.athlete_type,
+        height_cm=data.height_cm,
+        weight_kg=data.weight_kg,
     )
     db.add(user)
     db.commit()
@@ -96,6 +104,8 @@ def register(data: RegisterSchema, db: Session = Depends(get_db)):
             "age": user.age,
             "gender": user.gender,
             "athlete_type": user.athlete_type,
+            "height_cm": user.height_cm,
+            "weight_kg": user.weight_kg,
         }
     }
 
@@ -116,6 +126,8 @@ def login(data: LoginSchema, db: Session = Depends(get_db)):
             "age": user.age,
             "gender": user.gender,
             "athlete_type": user.athlete_type,
+            "height_cm": user.height_cm,
+            "weight_kg": user.weight_kg,
         }
     }
 
@@ -125,21 +137,26 @@ def predict(
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user)
 ):
-    # Encode categoricals
     row = {
-        'Fatigue_Score': data.fatigue_score,
-        'Recovery_Success': data.recovery_success,
-        'Injury_Type': ENCODINGS['Injury_Type'].get(data.injury_type, 0),
-        'Surgery_Type': ENCODINGS['Surgery_Type'].get(data.surgery_type, 0),
-        'ACL_Risk_Score': data.acl_risk_score,
-        'Injury_Severity': ENCODINGS['Injury_Severity'].get(data.injury_severity, 0),
-        'Dietary_Intake': data.dietary_intake,
-        'Psychological_Readiness_Score': data.psychological_readiness,
-        'Training_Hours_Per_Week': data.training_hours,
-        'Return_to_Sport_Status': ENCODINGS['Return_to_Sport_Status'].get(data.return_to_sport_status, 0),
         'Age': current_user.age or 25,
+        'Height_cm': current_user.height_cm or 175,
+        'Weight_kg': current_user.weight_kg or 70,
+        'Fatigue_Score': data.fatigue_score,
+        'ACL_Risk_Score': data.acl_risk_score,
+        'Training_Hours_Per_Week': data.training_hours,
+        'Recovery_Days_Per_Week': data.recovery_days_per_week,
+        'Heart_Rate': data.heart_rate,
+        'Sleep_Hours': data.sleep_hours,
+        'Dietary_Intake': data.dietary_intake,
+        'Prehab_Weeks': data.prehab_weeks,
+        'Psychological_Readiness_Score': data.psychological_readiness,
         'Gender': ENCODINGS['Gender'].get(current_user.gender or 'Male', 1),
+        'Injury_Type': ENCODINGS['Injury_Type'].get(data.injury_type, 0),
         'Athlete_Type': ENCODINGS['Athlete_Type'].get(current_user.athlete_type or 'Footballer', 1),
+        'Injury_Severity': ENCODINGS['Injury_Severity'].get(data.injury_severity, 0),
+        'Recovery_Therapy_Type': ENCODINGS['Recovery_Therapy_Type'].get(data.recovery_therapy_type, 0),
+        'Training_Intensity': ENCODINGS['Training_Intensity'].get(data.training_intensity, 0),
+        'Surgery_Type': ENCODINGS['Surgery_Type'].get(data.surgery_type, 0),
     }
 
     df = pd.DataFrame([row])
@@ -148,7 +165,6 @@ def predict(
     recovery = round(float(model_rec.predict(X)[0]), 1)
     return_sport = round(float(model_rts.predict(X)[0]), 1)
 
-    # Save prediction
     pred = Prediction(
         user_id=current_user.id,
         injury_type=data.injury_type,

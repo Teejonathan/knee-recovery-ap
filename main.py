@@ -39,7 +39,7 @@ class RegisterSchema(BaseModel):
     full_name: str
     email: str
     password: str
-    role: str
+    role: str  # "doctor" or "athlete"
     age: Optional[int] = None
     gender: Optional[str] = None
     phone: Optional[str] = None
@@ -58,14 +58,44 @@ class PredictSchema(BaseModel):
     recovery_therapy_type: str
     training_intensity: str
     fatigue_score: int
-    acl_risk_score: int
     psychological_readiness: int
     dietary_intake: int
     training_hours: int
     recovery_days_per_week: int
-    heart_rate: int
     sleep_hours: float
     prehab_weeks: int
+
+class ProfileUpdateSchema(BaseModel):
+    age: Optional[int] = None
+    height_cm: Optional[int] = None
+    weight_kg: Optional[int] = None
+    phone: Optional[str] = None
+    athlete_type: Optional[str] = None
+
+class SearchAthleteSchema(BaseModel):
+    email: str
+
+class ClinicalUpdateSchema(BaseModel):
+    athlete_email: str
+    acl_risk_score: int
+    heart_rate: int
+
+
+def user_public(user: User):
+    return {
+        "id": user.id,
+        "full_name": user.full_name,
+        "email": user.email,
+        "role": user.role,
+        "age": user.age,
+        "gender": user.gender,
+        "athlete_type": user.athlete_type,
+        "height_cm": user.height_cm,
+        "weight_kg": user.weight_kg,
+        "acl_risk_score": user.acl_risk_score,
+        "heart_rate": user.heart_rate,
+        "clinical_pending": user.acl_risk_score is None or user.heart_rate is None,
+    }
 
 # Routes
 @app.get("/")
@@ -93,21 +123,7 @@ def register(data: RegisterSchema, db: Session = Depends(get_db)):
     db.commit()
     db.refresh(user)
     token = create_access_token({"sub": user.email})
-    return {
-        "message": "Registration successful",
-        "token": token,
-        "user": {
-            "id": user.id,
-            "full_name": user.full_name,
-            "email": user.email,
-            "role": user.role,
-            "age": user.age,
-            "gender": user.gender,
-            "athlete_type": user.athlete_type,
-            "height_cm": user.height_cm,
-            "weight_kg": user.weight_kg,
-        }
-    }
+    return {"message": "Registration successful", "token": token, "user": user_public(user)}
 
 @app.post("/login")
 def login(data: LoginSchema, db: Session = Depends(get_db)):
@@ -115,21 +131,60 @@ def login(data: LoginSchema, db: Session = Depends(get_db)):
     if not user or not verify_password(data.password, user.password):
         raise HTTPException(status_code=401, detail="Invalid email or password")
     token = create_access_token({"sub": user.email})
-    return {
-        "message": "Login successful",
-        "token": token,
-        "user": {
-            "id": user.id,
-            "full_name": user.full_name,
-            "email": user.email,
-            "role": user.role,
-            "age": user.age,
-            "gender": user.gender,
-            "athlete_type": user.athlete_type,
-            "height_cm": user.height_cm,
-            "weight_kg": user.weight_kg,
-        }
-    }
+    return {"message": "Login successful", "token": token, "user": user_public(user)}
+
+@app.get("/me")
+def get_me(current_user: User = Depends(get_current_user)):
+    return user_public(current_user)
+
+@app.put("/profile")
+def update_profile(
+    data: ProfileUpdateSchema,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user)
+):
+    if data.age is not None:
+        current_user.age = data.age
+    if data.height_cm is not None:
+        current_user.height_cm = data.height_cm
+    if data.weight_kg is not None:
+        current_user.weight_kg = data.weight_kg
+    if data.phone is not None:
+        current_user.phone = data.phone
+    if data.athlete_type is not None:
+        current_user.athlete_type = data.athlete_type
+    db.commit()
+    db.refresh(current_user)
+    return user_public(current_user)
+
+@app.post("/search-athlete")
+def search_athlete(
+    data: SearchAthleteSchema,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user)
+):
+    if current_user.role != "doctor":
+        raise HTTPException(status_code=403, detail="Only doctors can search athletes")
+    athlete = db.query(User).filter(User.email == data.email, User.role == "athlete").first()
+    if not athlete:
+        raise HTTPException(status_code=404, detail="Athlete not found")
+    return user_public(athlete)
+
+@app.post("/update-clinical")
+def update_clinical(
+    data: ClinicalUpdateSchema,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user)
+):
+    if current_user.role != "doctor":
+        raise HTTPException(status_code=403, detail="Only doctors can update clinical values")
+    athlete = db.query(User).filter(User.email == data.athlete_email, User.role == "athlete").first()
+    if not athlete:
+        raise HTTPException(status_code=404, detail="Athlete not found")
+    athlete.acl_risk_score = data.acl_risk_score
+    athlete.heart_rate = data.heart_rate
+    db.commit()
+    return {"message": "Clinical values updated", "athlete": user_public(athlete)}
 
 @app.post("/predict")
 def predict(
@@ -142,10 +197,10 @@ def predict(
         'Height_cm': current_user.height_cm or 175,
         'Weight_kg': current_user.weight_kg or 70,
         'Fatigue_Score': data.fatigue_score,
-        'ACL_Risk_Score': data.acl_risk_score,
+        'ACL_Risk_Score': current_user.acl_risk_score or 25,
         'Training_Hours_Per_Week': data.training_hours,
         'Recovery_Days_Per_Week': data.recovery_days_per_week,
-        'Heart_Rate': data.heart_rate,
+        'Heart_Rate': current_user.heart_rate or 70,
         'Sleep_Hours': data.sleep_hours,
         'Dietary_Intake': data.dietary_intake,
         'Prehab_Weeks': data.prehab_weeks,
@@ -171,7 +226,7 @@ def predict(
         injury_severity=data.injury_severity,
         surgery_type=data.surgery_type,
         fatigue_score=data.fatigue_score,
-        acl_risk_score=data.acl_risk_score,
+        acl_risk_score=current_user.acl_risk_score or 25,
         psychological_readiness=data.psychological_readiness,
         recovery_time_days=recovery,
         return_to_sport_days=return_sport,
@@ -184,6 +239,7 @@ def predict(
         "return_to_sport_days": return_sport,
         "recovery_weeks": round(recovery / 7, 1),
         "return_to_sport_weeks": round(return_sport / 7, 1),
+        "clinical_pending": current_user.acl_risk_score is None or current_user.heart_rate is None,
     }
 
 @app.get("/history")

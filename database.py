@@ -20,13 +20,16 @@ class User(Base):
     full_name = Column(String)
     email = Column(String, unique=True, index=True)
     password = Column(String)
-    role = Column(String)
+    role = Column(String)  # "doctor" or "athlete"
     age = Column(Integer, nullable=True)
     gender = Column(String, nullable=True)
     phone = Column(String, nullable=True)
     athlete_type = Column(String, nullable=True)
     height_cm = Column(Integer, nullable=True)
     weight_kg = Column(Integer, nullable=True)
+    # Clinical values - only set by a Doctor, used automatically in predictions
+    acl_risk_score = Column(Integer, nullable=True)
+    heart_rate = Column(Integer, nullable=True)
     created_at = Column(DateTime, default=datetime.utcnow)
     predictions = relationship("Prediction", back_populates="user")
 
